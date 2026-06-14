@@ -18,11 +18,13 @@ func NewGame() *Game {
 		MoveBudget: 10,
 	}
 	g.CurrentWave = enemy.NewWave(g.Board)
+	g.CurrentWave.Begin()
 	return g
 }
 
 func (g *Game) Update() error {
 	// Game logic goes here (e.g., handling input, updating game state)
+	g.CurrentWave.Update()
 	return nil
 }
 

@@ -12,8 +12,11 @@ type Position struct {
 }
 
 type Enemy struct {
-	Type   string
-	Health int
+	Type             string
+	Health           int
+	XPos             float64
+	YPos             float64
+	CurrentTileIndex int
 }
 
 const (

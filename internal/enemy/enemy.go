@@ -2,7 +2,9 @@ package enemy
 
 import (
 	"image/color"
+	"log"
 	"math/rand"
+	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -10,6 +12,8 @@ import (
 	"github.com/louis-bourgault/chesstd/internal/cfg"
 	"github.com/louis-bourgault/chesstd/internal/types"
 )
+
+const BasicEnemyMoveSpeed = 5.0 //tiles per second
 
 func NewWave(board *board.Board) EnemyWave {
 	wave := EnemyWave{}
@@ -19,6 +23,8 @@ func NewWave(board *board.Board) EnemyWave {
 	//we might want something more complex later, for example trying to avoid the range of pieces, or trying to stay away from the player's pieces, but for now anything goes
 	//then we add obstacles that are made to protect the path
 	//then enemies after that
+
+	//could also take a param for difficulty which effects numbers of enemies, obstacles, and how much they try to avoid pieces, etc.
 
 	foundPath := false
 
@@ -83,6 +89,21 @@ func NewWave(board *board.Board) EnemyWave {
 	return wave
 }
 
+func (w *EnemyWave) Begin() {
+	//starts spawning enemies
+	numEnemies := 5
+	for i := 0; i < numEnemies; i++ {
+		w.Enemies = append(w.Enemies, types.Enemy{
+			Type:             "Basic", //NOT based on chess pieces, we want more of a bloons td style where they're differentiated by health, speed, resistance, etc.
+			Health:           10,
+			XPos:             float64(w.Path[0].X) + 0.5, //the float represents how far through the tile they are, not their absolute pos.
+			YPos:             float64(w.Path[0].Y) + 0.5,
+			CurrentTileIndex: 0,
+		})
+		log.Println("Added enemy")
+	}
+}
+
 type EnemyWave struct {
 	Path      []types.Position
 	Enemies   []types.Enemy
@@ -90,8 +111,43 @@ type EnemyWave struct {
 }
 
 func (w *EnemyWave) Update() {
-	//move enemies along the path, handle interactions, etc.
+	//if we go backwards, we can delete them better
+	for i := len(w.Enemies) - 1; i >= 0; i-- {
+		enemy := &w.Enemies[i]
 
+		if enemy.CurrentTileIndex < len(w.Path) {
+			currentTile := w.Path[enemy.CurrentTileIndex]
+			var nextTile types.Position
+
+			if enemy.CurrentTileIndex+1 >= len(w.Path) {
+				nextTile = types.Position{
+					Y: currentTile.Y,
+					X: currentTile.X + 1,
+				}
+			} else {
+				nextTile = w.Path[enemy.CurrentTileIndex+1]
+			}
+
+			axisX := nextTile.X - currentTile.X
+			axisY := nextTile.Y - currentTile.Y
+			enemy.XPos += float64(axisX) * cfg.Dt * BasicEnemyMoveSpeed
+			enemy.YPos += float64(axisY) * cfg.Dt * BasicEnemyMoveSpeed
+			targetX := float64(nextTile.X) + 0.5
+			targetY := float64(nextTile.Y) + 0.5
+
+			if (axisX > 0 && enemy.XPos >= targetX) || (axisX < 0 && enemy.XPos <= targetX) ||
+				(axisY > 0 && enemy.YPos >= targetY) || (axisY < 0 && enemy.YPos <= targetY) {
+
+				enemy.XPos = targetX
+				enemy.YPos = targetY
+				enemy.CurrentTileIndex++
+			}
+		} else {
+			// Because we are iterating backwards, slices.Delete is 100% safe
+			w.Enemies = slices.Delete(w.Enemies, i, i+1)
+			log.Println("Enemy got through defenses!")
+		}
+	}
 }
 
 func (w *EnemyWave) Draw(screen *ebiten.Image) {
@@ -100,4 +156,9 @@ func (w *EnemyWave) Draw(screen *ebiten.Image) {
 		//draw path for testing
 		vector.FillRect(screen, float32(tile.X*cfg.TileSize+cfg.LeftMargin), float32(tile.Y*cfg.TileSize+cfg.TopMargin), float32(cfg.TileSize), float32(cfg.TileSize), color.RGBA{255, 0, 0, 128}, false)
 	}
+	for _, enemy := range w.Enemies {
+		vector.FillCircle(screen, float32(enemy.XPos*cfg.TileSize+cfg.LeftMargin), float32(enemy.YPos*cfg.TileSize+cfg.TopMargin), float32(20), color.RGBA{227, 149, 189, 128}, false)
+	}
+	vector.FillCircle(screen, float32(1*cfg.TileSize+cfg.LeftMargin-0.5*cfg.TileSize), float32(1*cfg.TileSize+cfg.TopMargin-0.5*cfg.TileSize), float32(20), color.RGBA{227, 149, 189, 128}, false)
+
 }
