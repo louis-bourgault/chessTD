@@ -1,10 +1,16 @@
 # chess tower defense game
+basically a tower defense game but with chess pieces
+pieces attack in the way that they would normally attack in chess (bishop diagonally, knight L etc)
+their locations are reset at the start of each round to the beginnign positions (unless you have a modified otherwise)
+enemy path is randomised
 
-game design
+its also kind of a roguelike system where there are modifiers that you can use like permanently deleting a piece (useful when pawns are in the way) or changing the dps or making a piece always start the round at a place that you want it to start it.
 
-at the start the pieces are reset back to their set placed
+so Bloons TD/Chess/Balatro/Slay the Spire
 
-Chess based roguelike tower defense game. There is a standard 8x8 board that resets at the start of each round (back to either default chess or chess960)
+its really cool
+
+idk what else to put in this readme
 
 ```go run main.go```
 
