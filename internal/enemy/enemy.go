@@ -2,20 +2,26 @@ package enemy
 
 import (
 	"image/color"
-	"log"
 	"math/rand"
 	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
-	"github.com/louis-bourgault/chesstd/internal/board"
 	"github.com/louis-bourgault/chesstd/internal/cfg"
 	"github.com/louis-bourgault/chesstd/internal/types"
 )
 
 const BasicEnemyMoveSpeed = 5.0 //tiles per second
+const FramesPerSpawn = 60
 
-func NewWave(board *board.Board) EnemyWave {
+func GetPieceAt(board [8][8]*types.Piece, pos types.Position) bool {
+	if pos.X < 0 || pos.X >= 8 || pos.Y < 0 || pos.Y >= 8 {
+		return false
+	}
+	return board[pos.Y][pos.X] != nil
+}
+
+func NewWave(board [8][8]*types.Piece, escFunc func(escaped types.Enemy)) EnemyWave {
 	wave := EnemyWave{}
 	//generate a path where there aren't pieces.
 	//always starts somewhere on the left edge
@@ -35,7 +41,7 @@ func NewWave(board *board.Board) EnemyWave {
 		//first find a start pos, and then go from there. if we hit a dead end, start over with a new start pos. if we get to the right edge, we're done.
 		for !foundStart {
 			startY := rand.Intn(8)
-			if board.GetPieceAt(types.Position{X: 0, Y: startY}).PieceType == types.None {
+			if !GetPieceAt(board, types.Position{X: 0, Y: startY}) {
 				candidatePath = append(candidatePath, types.Position{X: 0, Y: startY})
 				foundStart = true
 			}
@@ -57,7 +63,7 @@ func NewWave(board *board.Board) EnemyWave {
 
 			validNextSteps := []types.Position{}
 			for _, step := range nextSteps {
-				if step.X >= 0 && step.X < 8 && step.Y >= 0 && step.Y < 8 && board.GetPieceAt(step).PieceType == types.None {
+				if step.X >= 0 && step.X < 8 && step.Y >= 0 && step.Y < 8 && !GetPieceAt(board, step) {
 					validNextSteps = append(validNextSteps, step)
 				}
 				//if we've already been there, don't go back.
@@ -85,33 +91,42 @@ func NewWave(board *board.Board) EnemyWave {
 		}
 
 	}
-
+	wave.OnEnemyEscaped = escFunc
+	wave.SpawnCounter = 0
 	return wave
+
 }
 
-func (w *EnemyWave) Begin() {
+func (w *EnemyWave) Spawn() {
 	//starts spawning enemies
-	numEnemies := 5
-	for i := 0; i < numEnemies; i++ {
-		w.Enemies = append(w.Enemies, types.Enemy{
-			Type:             "Basic", //NOT based on chess pieces, we want more of a bloons td style where they're differentiated by health, speed, resistance, etc.
-			Health:           10,
-			XPos:             float64(w.Path[0].X) + 0.5, //the float represents how far through the tile they are, not their absolute pos.
-			YPos:             float64(w.Path[0].Y) + 0.5,
-			CurrentTileIndex: 0,
-		})
-		log.Println("Added enemy")
-	}
+
+	w.Enemies = append(w.Enemies, types.Enemy{
+		Type:             "Basic", //NOT based on chess pieces, we want more of a bloons td style where they're differentiated by health, speed, resistance, etc.
+		Health:           10,
+		XPos:             float64(w.Path[0].X) + 0.5, //the float represents how far through the tile they are, not their absolute pos.
+		YPos:             float64(w.Path[0].Y) + 0.5,
+		CurrentTileIndex: 0,
+		Id:               w.SpawnCounter,
+	})
+	w.SpawnCounter++
 }
 
 type EnemyWave struct {
-	Path      []types.Position
-	Enemies   []types.Enemy
-	Obstacles []types.Position
+	Path                 []types.Position
+	Enemies              []types.Enemy
+	Obstacles            []types.Position
+	framesSinceLastSpawn int
+	OnEnemyEscaped       func(escaped types.Enemy)
+	SpawnCounter         uint64
 }
 
 func (w *EnemyWave) Update() {
 	//if we go backwards, we can delete them better
+	if w.framesSinceLastSpawn >= FramesPerSpawn {
+		w.framesSinceLastSpawn = 0
+		w.Spawn()
+	}
+	w.framesSinceLastSpawn++
 	for i := len(w.Enemies) - 1; i >= 0; i-- {
 		enemy := &w.Enemies[i]
 
@@ -143,9 +158,10 @@ func (w *EnemyWave) Update() {
 				enemy.CurrentTileIndex++
 			}
 		} else {
-			// Because we are iterating backwards, slices.Delete is 100% safe
+			//because we are iterating backwards, qwe can use slices.delete safely
+			copyEnemy := *enemy
 			w.Enemies = slices.Delete(w.Enemies, i, i+1)
-			log.Println("Enemy got through defenses!")
+			w.OnEnemyEscaped(copyEnemy)
 		}
 	}
 }

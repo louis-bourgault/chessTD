@@ -3,7 +3,8 @@ package types
 type PieceType int
 
 type Piece struct {
-	PieceType PieceType
+	PieceType      PieceType
+	CooldownFrames int
 }
 
 type Position struct {
@@ -12,11 +13,23 @@ type Position struct {
 }
 
 type Enemy struct {
+	Id               uint64
 	Type             string
 	Health           int
 	XPos             float64
 	YPos             float64
 	CurrentTileIndex int
+}
+
+type VisualProjectile struct {
+	Id            uint64
+	X             float64
+	Y             float64
+	TargetEnemyId uint64
+	TargetLastX   float64
+	TargetLastY   float64
+	Speed         float64
+	Damage        int
 }
 
 const (
