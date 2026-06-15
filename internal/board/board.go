@@ -3,7 +3,6 @@ package board
 import (
 	"fmt"
 	"image/color"
-	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -25,6 +24,7 @@ type Board struct {
 	StartingGridLocations [8][8]*types.Piece
 	MoveBudget            int
 	SelectedTile          *types.Position
+	IsTileOnEnemyPath     func(pos types.Position) bool
 }
 
 func NewBoard() *Board {
@@ -96,6 +96,9 @@ func (b *Board) Draw(screen *ebiten.Image) {
 			if (x+y)%2 != 0 {
 				tileColor = color.RGBA{139, 115, 85, 255}
 			}
+			if b.SelectedTile != nil && b.SelectedTile.X == x && b.SelectedTile.Y == y {
+				tileColor = color.RGBA{255, 255, 0, 255}
+			}
 			vector.FillRect(screen, float32(x*cfg.TileSize+cfg.LeftMargin), float32(y*cfg.TileSize+cfg.TopMargin), cfg.TileSize, cfg.TileSize, tileColor, false)
 
 			face := &text.GoTextFace{
@@ -115,7 +118,7 @@ func (b *Board) Draw(screen *ebiten.Image) {
 		}
 	}
 	moveText := fmt.Sprintf("Move Budget: %d", b.MoveBudget)
-	log.Printf(moveText)
+	// log.Printf(moveText)
 	textRendering.DrawText(screen, moveText, MoveBudgetXPos, MoveBudgetYPos, 32, color.RGBA{255, 255, 255, 255})
 
 }
@@ -147,6 +150,9 @@ func (b *Board) Update() {
 }
 
 func (b *Board) IsValidMove(from, to types.Position) bool {
+	if b.IsTileOnEnemyPath(to) {
+		return false
+	}
 	if from.X < 0 || from.X >= 8 || from.Y < 0 || from.Y >= 8 {
 		return false
 	}

@@ -93,6 +93,7 @@ func NewWave(board [8][8]*types.Piece, escFunc func(escaped types.Enemy)) EnemyW
 	}
 	wave.OnEnemyEscaped = escFunc
 	wave.SpawnCounter = 0
+	wave.ToSpawn = 10
 	return wave
 
 }
@@ -118,11 +119,13 @@ type EnemyWave struct {
 	framesSinceLastSpawn int
 	OnEnemyEscaped       func(escaped types.Enemy)
 	SpawnCounter         uint64
+	Finished             bool
+	ToSpawn              int
 }
 
 func (w *EnemyWave) Update() {
 	//if we go backwards, we can delete them better
-	if w.framesSinceLastSpawn >= FramesPerSpawn {
+	if w.framesSinceLastSpawn >= FramesPerSpawn && w.SpawnCounter < uint64(w.ToSpawn) {
 		w.framesSinceLastSpawn = 0
 		w.Spawn()
 	}
@@ -164,6 +167,10 @@ func (w *EnemyWave) Update() {
 			w.OnEnemyEscaped(copyEnemy)
 		}
 	}
+	if len(w.Enemies) == 0 && w.SpawnCounter >= uint64(w.ToSpawn) {
+		w.Finished = true
+	}
+
 }
 
 func (w *EnemyWave) Draw(screen *ebiten.Image) {

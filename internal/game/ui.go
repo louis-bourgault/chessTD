@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"image/color"
 	"log"
 
@@ -8,13 +9,17 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/louis-bourgault/chesstd/internal/cfg"
 	text1 "github.com/louis-bourgault/chesstd/internal/textRendering"
 )
 
-const startButtonStartX = 0
-const startButtonStartY = 0
+const startButtonStartX = cfg.LeftMargin
+const startButtonStartY = cfg.TopMargin + 8*cfg.TileSize + 20
 const startButtonWidth = 100
 const startButtonHeight = 50
+
+const HealthXPos = cfg.LeftMargin + 8*cfg.TileSize + 20
+const HealthYPos = cfg.TopMargin + 40
 
 func (g *Game) RenderUI(screen *ebiten.Image) {
 	vector.FillRect(screen, startButtonStartX, startButtonStartY, startButtonWidth, startButtonHeight, color.White, false)
@@ -33,6 +38,18 @@ func (g *Game) RenderUI(screen *ebiten.Image) {
 	} else {
 		text.Draw(screen, "Pause", face, op)
 	}
+	healthText := "Health: " + fmt.Sprintf("%d", g.Health)
+	text1.DrawText(screen, healthText, HealthXPos, HealthYPos, 32, color.RGBA{255, 0, 0, 255})
+	text1.DrawText(screen, fmt.Sprintf("Round: %d", g.Round), HealthXPos, HealthYPos+40, 32, color.RGBA{255, 255, 255, 255})
+
+	if g.Shop {
+		shopText := "Shop"
+		text1.DrawText(screen, shopText, HealthXPos, HealthYPos+40, 24, color.RGBA{255, 255, 0, 255})
+
+		vector.FillRect(screen, HealthXPos, HealthYPos+80, 200, 50, color.RGBA{0, 255, 0, 255}, false)
+		text1.DrawText(screen, "Next Round", HealthXPos, HealthYPos+80, 24, color.RGBA{0, 0, 0, 255})
+	}
+
 }
 
 func (g *Game) UpdateUI() {
@@ -47,6 +64,10 @@ func (g *Game) UpdateUI() {
 				log.Println("pausing game")
 				g.Running = false
 			}
+		} else if g.Shop && posX >= HealthXPos && posX <= HealthXPos+200 && posY >= HealthYPos+80 && posY <= HealthYPos+80+50 {
+			log.Println("starting next round")
+			g.Shop = false
+			g.StartNextRound()
 		}
 
 	}

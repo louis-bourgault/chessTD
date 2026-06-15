@@ -18,6 +18,7 @@ type Game struct {
 	Running          bool
 	Lost             bool
 	Round            int
+	Shop             bool
 }
 
 func NewGame() *Game {
@@ -27,6 +28,14 @@ func NewGame() *Game {
 		Round:  1,
 	}
 	g.CurrentWave = enemy.NewWave(g.Board.Grid, g.OnEnemyEscape)
+	g.Board.IsTileOnEnemyPath = func(pos types.Position) bool {
+		for _, pathPos := range g.CurrentWave.Path {
+			if pathPos == pos {
+				return true
+			}
+		}
+		return false
+	}
 	// g.CurrentWave.Spawn()
 
 	return g
@@ -39,7 +48,6 @@ func (g *Game) OnEnemyEscape(escaped types.Enemy) {
 }
 
 func (g *Game) Update() error {
-	// Game logic goes here (e.g., handling input, updating game state)
 	if g.Health <= 0 {
 		g.Running = false
 		log.Println("Game Over!")
@@ -53,7 +61,29 @@ func (g *Game) Update() error {
 	g.CurrentWave.Update()
 	g.UpdateTowerAttacks()
 	g.UpdateVisualProjectiles()
+	if g.CurrentWave.Finished {
+		g.Shop = true
+	}
 	return nil
+
+}
+
+func (g *Game) StartNextRound() {
+	g.Round += 1
+	g.CurrentWave = enemy.NewWave(g.Board.Grid, g.OnEnemyEscape)
+	g.Board.IsTileOnEnemyPath = func(pos types.Position) bool {
+		for _, pathPos := range g.CurrentWave.Path {
+			if pathPos == pos {
+				return true
+			}
+		}
+		return false
+	}
+	g.Health += 5
+	g.Health = min(g.Health, 20) //cap health at 20
+	g.Board.Reset()              //resets the board to its initial state for the new round
+	g.Board.MoveBudget += 5
+	g.Running = false
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
