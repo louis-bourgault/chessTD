@@ -163,8 +163,15 @@ func (b *Board) IsValidMove(from, to types.Position) bool {
 	if piece.PieceType == types.None {
 		return false
 	}
+	pieceAtDestination := b.GetPieceAt(to)
+	if pieceAtDestination.PieceType != types.None {
+		return false
+	}
+	if b.isMoveable(from.X, from.Y, to.X, to.Y, piece.PieceType) {
+		return true
+	}
 	//switch case here for piece type
-	return true
+	return false
 }
 
 func (b *Board) GetPieceAt(pos types.Position) *types.Piece {
@@ -178,4 +185,81 @@ func (b *Board) GetPieceAt(pos types.Position) *types.Piece {
 	}
 	return &types.Piece{PieceType: types.None}
 	//we can't return nil, there would be null pointer exceptions all over the place
+}
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+func (b *Board) isMoveable(px, py, ex, ey int, pieceType types.PieceType) bool {
+	//px is the original
+	dx := abs(ex - px)
+	dy := abs(ey - py)
+
+	switch pieceType {
+	case types.Rook:
+		if dx != 0 && dy != 0 {
+			return false
+		}
+		return !b.isPathBlocked(px, py, ex, ey)
+
+	case types.Bishop:
+		if dx != dy {
+			return false
+		}
+		return !b.isPathBlocked(px, py, ex, ey)
+
+	case types.Queen:
+		if dx != 0 && dy != 0 && dx != dy {
+			return false
+		}
+		return !b.isPathBlocked(px, py, ex, ey)
+
+	case types.Knight:
+		return (dx == 1 && dy == 2) || (dx == 2 && dy == 1)
+
+	case types.Pawn:
+		if dx == 0 && dy == 1 {
+			return true
+		}
+		if py == 6 && dx == 0 && dy == 2 {
+			return true
+		}
+
+	case types.King:
+		return dx <= 1 && dy <= 1 && (dx > 0 || dy > 0)
+	}
+	return false
+}
+
+func (g *Board) isPathBlocked(px, py, ex, ey int) bool {
+	dx := ex - px
+	dy := ey - py
+
+	stepX := 0
+	if dx > 0 {
+		stepX = 1
+	} else if dx < 0 {
+		stepX = -1
+	}
+
+	stepY := 0
+	if dy > 0 {
+		stepY = 1
+	} else if dy < 0 {
+		stepY = -1
+	}
+
+	x := px + stepX
+	y := py + stepY
+
+	for x != ex || y != ey {
+		if g.Grid[y][x] != nil && g.Grid[y][x].PieceType != types.None {
+			return true
+		}
+		x += stepX
+		y += stepY
+	}
+	return false
 }
